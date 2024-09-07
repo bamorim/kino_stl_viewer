@@ -1,0 +1,41 @@
+# Usage
+
+```elixir
+Mix.install([
+  {:kino_stl_viewer, "~> 0.1.0"}
+])
+```
+
+## Setup the viewer
+
+First we need to create the viewer before we can load models into it.
+
+```elixir
+viewer = KinoStlViewer.new()
+```
+
+## Load models
+
+Now that the viewer is created, we can load STL files into it.
+
+Here is an example using a file input and a form:
+
+```elixir
+form =
+  Kino.Control.form(
+    [file: Kino.Input.file("STL File", accept: [".stl"])],
+    submit: "Load Model"
+  )
+
+form
+|> Kino.Control.stream()
+|> Kino.listen(fn event ->
+  unless is_nil(event.data.file) do
+    path = Kino.Input.file_path(event.data.file.file_ref)
+    content = File.read!(path)
+    KinoStlViewer.load(viewer, content)
+  end
+end)
+
+form
+```

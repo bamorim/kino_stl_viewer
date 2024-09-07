@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "esbuild main.js --bundle --minify --outfile=../../lib/assets/stl_viewer/build/main.js --format=esm --loader:.js=jsx",
+    "dev": "esbuild main.js --bundle --minify --outfile=../../lib/assets/stl_viewer/build/main.js --format=esm --loader:.js=jsx --watch",
+    "lint": "biome check main.js"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.8.3",
+    "esbuild": "^0.23.1"
+  },
+  "dependencies": {
+    "three": "^0.168.0",
+    "three-stdlib": "^2.32.2"
+  }
+}
