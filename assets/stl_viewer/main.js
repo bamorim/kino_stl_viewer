@@ -20,14 +20,18 @@ class ModelViewer {
       alpha: true,
       canvas,
     });
-    this.renderer.setClearColor(0x999999);
+    this.renderer.setClearColor(0xbbbbbb);
     this.renderer.setPixelRatio(window.devicePixelRatio);
 
     this.camera = new THREE.PerspectiveCamera(45, 1);
     this.camera.up.set(0, 0, 1);
+    this.camera.position.set(-1, -1, 1);
     this.camera.add(new THREE.PointLight(0xffffff, 0.8));
 
     this.scene = new THREE.Scene();
+    // Add ambient light and camera
+    this.scene.add(new THREE.AmbientLight(0x99999));
+    this.scene.add(this.camera);
 
     this.render();
 
@@ -52,14 +56,9 @@ class ModelViewer {
 
   loadObject(buffer) {
     // Clear Scene
-    const children = [...this.scene.children];
-    for (const child of children) {
-      this.scene.remove(child);
-    }
-
-    // Add ambient light and camera
-    this.scene.add(new THREE.AmbientLight(0x99999));
-    this.scene.add(this.camera);
+    if (this.object) this.scene.remove(this.object);
+    if (this.wireframe) this.scene.remove(this.wireframe);
+    if (this.grid) this.scene.remove(this.grid);
 
     // Load and add the object
     const loader = new STLLoader();
@@ -71,58 +70,45 @@ class ModelViewer {
       specular: 0x111111,
       shininess: 200,
     });
-    const object = new THREE.Mesh(geometry, material);
+    this.object = new THREE.Mesh(geometry, material);
+    this.scene.add(this.object);
 
     const wfGeometry = new THREE.EdgesGeometry(geometry);
     const wfMaterial = new THREE.LineBasicMaterial({
       color: 0xeeeeee,
       linewidth: 1,
     });
-    const wireframe = new THREE.LineSegments(wfGeometry, wfMaterial);
-    this.scene.add(object);
-    this.scene.add(wireframe);
+    this.wireframe = new THREE.LineSegments(wfGeometry, wfMaterial);
+    this.scene.add(this.wireframe);
 
     // Find bounding box
-    const boundingBox = new THREE.Box3().setFromObject(object);
-    const center = boundingBox.getCenter(new THREE.Vector3());
+    const boundingBox = new THREE.Box3().setFromObject(this.object);
     const size = boundingBox.getSize(new THREE.Vector3());
 
-    // Get max dimensions
-    const dimensions = [
-      boundingBox.min.x,
-      boundingBox.min.y,
-      boundingBox.max.x,
-      boundingBox.max.y,
-    ];
-    const maxDimension = Math.max(...dimensions.map(Math.abs)) * 1.1;
-
     // Build Grid
-    const gridUnit = 10 ** Math.ceil(Math.log10(maxDimension / 10));
-    const gridSize = 2 * Math.ceil(maxDimension / gridUnit) * gridUnit;
-    const grid = new THREE.GridHelper(
+    const gridReferenceSize = Math.max(size.x, size.y) * 1.1;
+    const gridUnit = 10 ** Math.ceil(Math.log10(gridReferenceSize / 10));
+    const gridSize = Math.ceil(gridReferenceSize / gridUnit) * gridUnit;
+    this.grid = new THREE.GridHelper(
       gridSize,
       gridSize / gridUnit,
       0xffffff,
       0x555555,
     );
-    grid.rotateOnAxis(new THREE.Vector3(1, 0, 0), 90 * (Math.PI / 180));
-    this.scene.add(grid);
+    this.grid.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+    this.scene.add(this.grid);
 
-    const cameraPos = new THREE.Vector3(
-      (size.x * -2) / 3,
-      (size.y * -4) / 3,
-      size.z * 3,
-    ).add(boundingBox.min);
+    this.controls.reset();
 
-    this.camera.far = maxDimension * 10;
+    const maxSize = Math.max(size.x, size.y, size.z);
+    // the -2sqrt(2) ensures the other half side of the plane is not "too far"
+    this.controls.maxDistance = maxSize * (10 - 2 * Math.SQRT2);
+    this.controls.minDistance = maxSize / 10;
+
+    this.camera.far = maxSize * 10;
+    this.camera.position.multiplyScalar(maxSize);
     this.camera.updateProjectionMatrix();
 
-    this.camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
-
-    this.controls.maxDistance = maxDimension * (10 - 2 * Math.SQRT2);
-    this.controls.target.set(center.x, center.y, center.z);
-    this.controls.update();
-
-    this.currentObjects = [object, wireframe, grid];
+    this.render();
   }
 }
